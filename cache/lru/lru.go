@@ -10,6 +10,7 @@ type kvpair struct {
 	Key, Value string
 }
 
+// LRU is a Least Recently Used cache
 type LRU struct {
 	mu      sync.Mutex
 	entries map[string]*list.Element
@@ -17,6 +18,7 @@ type LRU struct {
 	last    *list.List
 }
 
+// NewLRU returns a LRU
 func NewLRU(size int) *LRU {
 	return &LRU{
 		max:     size,
@@ -25,16 +27,16 @@ func NewLRU(size int) *LRU {
 	}
 }
 
-func (u *LRU) Get(key string) string {
-	// TODO: singlefile map of mutexes for more granular locking?
+// Get returns a key value
+func (u *LRU) Get(key string) (string, bool) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
 
 	if v, ok := u.entries[key]; ok {
 		u.last.MoveToBack(v)
-		return v.Value.(kvpair).Value
+		return v.Value.(kvpair).Value, true
 	}
-	return ""
+	return "", false
 }
 
 // Getter will return the cached value or will
@@ -64,8 +66,6 @@ func (u *LRU) Set(key string, value string) {
 		u.entries[key] = u.last.PushBack(kvpair{key, value})
 		return
 	}
-
-	//fmt.Printf("%d exceeds %d\n", len(u.entries), u.max)
 
 	// last touched should be at the front of the list
 	old := u.last.Front()
